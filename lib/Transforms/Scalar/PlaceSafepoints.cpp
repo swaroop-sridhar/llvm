@@ -504,8 +504,11 @@ static bool isGCSafepointPoll(Function &F) {
 static bool shouldRewriteFunction(Function &F) {
   // TODO: This should check the GCStrategy
   if (F.hasGC()) {
+    const char *FunctionGCName = F.getGC();
     const std::string StatepointExampleName("statepoint-example");
-    return StatepointExampleName == F.getGC();
+    const std::string CoreCLRName("statepoint-CoreCLR");
+    return (StatepointExampleName == FunctionGCName) ||
+           (CoreCLRName == FunctionGCName);
   } else
     return false;
 }

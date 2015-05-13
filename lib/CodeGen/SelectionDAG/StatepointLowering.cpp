@@ -440,7 +440,7 @@ static void lowerStatepointMetaArgs(SmallVectorImpl<SDValue> &Ops,
   // safepoint is something the strategy thinks might be a pointer into the GC
   // heap.  This is basically just here to help catch errors during statepoint
   // insertion. TODO: This should actually be in the Verifier, but we can't get
-  // to the GCStrategy from there (yet).
+  // to the GCStrategy from there (yet).GC
   GCStrategy &S = Builder.GFI->getStrategy();
   for (const Value *V : Bases) {
     auto Opt = S.isGCManagedPointer(V);
