@@ -19,4 +19,3 @@ entry:
 }
 
 declare i32 @llvm.experimental.gc.statepoint.p0f_isVoidf(i64, i32, void ()*, i32, i32, ...) 
-
