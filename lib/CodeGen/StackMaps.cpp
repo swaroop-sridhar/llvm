@@ -605,7 +605,7 @@ void StackMapRecord::parse(uint8_t* data, unsigned& offset, const unsigned len)
   uint16_t Padding16 = parse_primitive<uint16_t>(data, offset, len);
   assert(Padding16 == 0);
   uint16_t NumLiveOuts = parse_primitive<uint16_t>(data, offset, len);
-  assert(NumLiveOuts == 0, "need to implement live out parsing");
+  assert(NumLiveOuts == 0 && "need to implement live out parsing");
 
   // If the offset is not 8-byte aligned, skip the padding inserted to align it.
   if (offset % 8 != 0) {
@@ -657,49 +657,58 @@ void StackMapSection::verify() const
   }
 }
 
-void StackMapSection::dump() const
+const char*
+StackMapSection::locationTypeToString(uint8_t Type) 
 {
-  if (FnSizeRecords.empty()) {
-    printf("Functions (%d) []\n", static_cast<int>(FnSizeRecords.size()));
-  }
-  else {
-    printf("Functions (%d) [\n", static_cast<int>(FnSizeRecords.size()));
-    for (uint16_t j = 0; j < FnSizeRecords.size(); j++) {
-      printf("  addr=%u, size=%u", static_cast<unsigned>(FnSizeRecords[j].FunctionAddr),
-        static_cast<unsigned>(FnSizeRecords[j].StackSize));
-    }
-    puts("]");
-  }
-  if (Constants.empty()) {
-    printf("Constants (%d) []\n", static_cast<int>(Constants.size()));
-  }
-  else {
-    printf("Constants (%d) [\n", static_cast<int>(Constants.size()));
-    for (uint16_t j = 0; j < Constants.size(); j++) {
-      printf("  value=%u", static_cast<unsigned>(Constants[j]));
-    }
-    puts("]");
-  }
-  printf("Records (%d) [\n", static_cast<int>(Records.size()));
+  switch (Type) {
+  case LocationRecord::Unprocessed: return "Unprocessed";
+  case LocationRecord::Register: return "Register";
+  case LocationRecord::Direct: return "Direct";
+  case LocationRecord::Indirect: return "Indirect";
+  case LocationRecord::Constant: return "Constant";
+  case LocationRecord::ConstantIndex: return "ConstantIndex";
+  };
 
+  llvm_unreachable("Unknown Location Record Type");
+  return "ILLEGAL";
+}
+
+void StackMapSection::print(raw_ostream &OS) const
+{
+  OS << "Functions (" << static_cast<int>(FnSizeRecords.size()) << ") [\n";
+  for (uint16_t j = 0; j < FnSizeRecords.size(); j++) {
+    OS << "  addr = " << static_cast<unsigned>(FnSizeRecords[j].FunctionAddr);
+    OS << ", size = " << static_cast<unsigned>(FnSizeRecords[j].StackSize);
+    OS << "\n";
+  }
+  OS << "]\n";
+
+  OS << "Constants (" << static_cast<int>(Constants.size()) << ") [\n";
+  for (uint16_t j = 0; j < Constants.size(); j++) {
+    OS << "  value = " << static_cast<unsigned>(Constants[j]);
+  }
+  OS << "]\n";
+
+  OS << "Records (" << static_cast<int>(Records.size()) << ") [\n";
   for (unsigned i = 0; i < Records.size(); i++) {
     const StackMapRecord& Rec = Records[i];
-    printf("  id=%lu, offset=%d, flags=%X\n", Rec.PatchPointID, Rec.InstructionOffset,
-      Rec.ReservedFlags);
-    if (Rec.Locations.empty()) {
-      printf("  Locations (%d) []\n", static_cast<int>(Rec.Locations.size()));
+    OS << "  id = " << Rec.PatchPointID;
+    OS << ", offset" << Rec.InstructionOffset;
+    OS << ", flags=" << Rec.ReservedFlags;
+    OS << "\n";
+
+    OS << "  Locations (" << static_cast<int>(Rec.Locations.size()) << ") [\n";
+    for (uint16_t j = 0; j < Rec.Locations.size(); j++) {
+      const LocationRecord& Loc = Rec.Locations[j];
+      OS << "    type = " << locationTypeToString(Loc.Type);
+      OS << ", size = " << (size_t)Loc.SizeInBytes;
+      OS << ", dwarfreg = " << Loc.DwarfRegNum;
+      OS << ", offset = " << Loc.Offset;
+      OS << "\n";
     }
-    else {
-      printf("  Locations (%d) [\n", static_cast<int>(Rec.Locations.size()));
-      for (uint16_t j = 0; j < Rec.Locations.size(); j++) {
-        const LocationRecord& Loc = Rec.Locations[j];
-        printf("    type=%u, size=%u, dwarfreg=%u, offset=%u\n", Loc.Type, Loc.SizeInBytes,
-          Loc.DwarfRegNum, Loc.Offset);
-      }
-      puts("  ]");
-    }
+    OS << "  ]\n";
   }
-  puts("]");
+  OS << "]\n";
 }
 
 StackMapRecord& StackMapSection::findRecordForRelPC(uint32_t RelPC)
