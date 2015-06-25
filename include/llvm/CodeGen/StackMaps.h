@@ -322,7 +322,7 @@ struct StackMapSection {
   void dump() const { print(dbgs()); }
   void StackMapSection::print(raw_ostream &OS) const;
 
-  static const char* locationTypeToString(uint8_t Type);
+  static const char *locationTypeToString(uint8_t Type);
 
   StackMapRecord& findRecordForRelPC(uint32_t RelPC);
   bool hasRecordForRelPC(uint32_t RelPC);

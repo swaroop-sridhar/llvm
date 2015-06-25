@@ -657,24 +657,27 @@ void StackMapSection::verify() const
   }
 }
 
-const char*
-StackMapSection::locationTypeToString(uint8_t Type) 
-{
+const char *StackMapSection::locationTypeToString(uint8_t Type) {
   switch (Type) {
-  case LocationRecord::Unprocessed: return "Unprocessed";
-  case LocationRecord::Register: return "Register";
-  case LocationRecord::Direct: return "Direct";
-  case LocationRecord::Indirect: return "Indirect";
-  case LocationRecord::Constant: return "Constant";
-  case LocationRecord::ConstantIndex: return "ConstantIndex";
+  case LocationRecord::Unprocessed:
+    return "Unprocessed";
+  case LocationRecord::Register:
+    return "Register";
+  case LocationRecord::Direct:
+    return "Direct";
+  case LocationRecord::Indirect:
+    return "Indirect";
+  case LocationRecord::Constant:
+    return "Constant";
+  case LocationRecord::ConstantIndex:
+    return "ConstantIndex";
   };
 
   llvm_unreachable("Unknown Location Record Type");
   return "ILLEGAL";
 }
 
-void StackMapSection::print(raw_ostream &OS) const
-{
+void StackMapSection::print(raw_ostream &OS) const {
   OS << "Functions (" << static_cast<int>(FnSizeRecords.size()) << ") [\n";
   for (uint16_t j = 0; j < FnSizeRecords.size(); j++) {
     OS << "  addr = " << static_cast<unsigned>(FnSizeRecords[j].FunctionAddr);
@@ -699,7 +702,7 @@ void StackMapSection::print(raw_ostream &OS) const
 
     OS << "  Locations (" << static_cast<int>(Rec.Locations.size()) << ") [\n";
     for (uint16_t j = 0; j < Rec.Locations.size(); j++) {
-      const LocationRecord& Loc = Rec.Locations[j];
+      const LocationRecord &Loc = Rec.Locations[j];
       OS << "    type = " << locationTypeToString(Loc.Type);
       OS << ", size = " << (size_t)Loc.SizeInBytes;
       OS << ", dwarfreg = " << Loc.DwarfRegNum;
