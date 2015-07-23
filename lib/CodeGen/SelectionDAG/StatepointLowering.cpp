@@ -439,11 +439,12 @@ spillIncomingStatepointValue(SDValue Incoming, SDValue Chain,
 }
 
 /// Lower a single value incoming to a statepoint node.  This value can be
-/// either a deopt value or a gc value, the handling is the same.  We special
-/// case constants and allocas, then fall back to spilling if required.
+/// either a deopt value or a gc value. We special case constants and allocas, 
+/// then fall back to spilling if required.
 static void lowerIncomingStatepointValue(SDValue Incoming,
                                          SmallVectorImpl<SDValue> &Ops,
-                                         SelectionDAGBuilder &Builder) {
+                                         SelectionDAGBuilder &Builder,
+                                         bool IsGcValue) {
   SDValue Chain = Builder.getRoot();
 
   if (ConstantSDNode *C = dyn_cast<ConstantSDNode>(Incoming)) {
@@ -453,11 +454,17 @@ static void lowerIncomingStatepointValue(SDValue Incoming,
     // pointers and other constant pointers in GC states
     pushStackMapConstant(Ops, Builder, C->getSExtValue());
   } else if (FrameIndexSDNode *FI = dyn_cast<FrameIndexSDNode>(Incoming)) {
-    // This handles allocas as arguments to the statepoint (this is only
-    // really meaningful for a deopt value.  For GC, we'd be trying to
-    // relocate the address of the alloca itself?)
-    Ops.push_back(Builder.DAG.getTargetFrameIndex(FI->getIndex(),
-                                                  Incoming.getValueType()));
+    // This handles allocas as arguments to the statepoint 
+    if (IsGcValue) {
+      // Skip reporting pointers to allocas 
+      // Don't bother spilling the address of an alloca to another stack slot.
+      // Stack allocation will not be GCed.
+    }
+    else {
+      // Preserce the Deopt value
+      Ops.push_back(Builder.DAG.getTargetFrameIndex(FI->getIndex(),
+        Incoming.getValueType()));
+    }
   } else {
     // Otherwise, locate a spill slot and explicitly spill it so it
     // can be found by the runtime later.  We currently do not support
@@ -551,7 +558,7 @@ static void lowerStatepointMetaArgs(SmallVectorImpl<SDValue> &Ops,
   // way.
   for (const Value *V : StatepointSite.vm_state_args()) {
     SDValue Incoming = Builder.getValue(V);
-    lowerIncomingStatepointValue(Incoming, Ops, Builder);
+    lowerIncomingStatepointValue(Incoming, Ops, Builder, false);
   }
 
   // Finally, go ahead and lower all the gc arguments.  There's no prefixed
@@ -561,11 +568,14 @@ static void lowerStatepointMetaArgs(SmallVectorImpl<SDValue> &Ops,
   // (base[0], ptr[0], base[1], ptr[1], ...)
   for (unsigned i = 0; i < Bases.size(); ++i) {
     const Value *Base = Bases[i];
-    lowerIncomingStatepointValue(Builder.getValue(Base), Ops, Builder);
+    lowerIncomingStatepointValue(Builder.getValue(Base), Ops, Builder, true);
 
     const Value *Ptr = Ptrs[i];
-    lowerIncomingStatepointValue(Builder.getValue(Ptr), Ops, Builder);
+    lowerIncomingStatepointValue(Builder.getValue(Ptr), Ops, Builder, true);
   }
+
+#if 0 
+  // Skip reporting Allocas
 
   // If there are any explicit spill slots passed to the statepoint, record
   // them, but otherwise do not do anything special.  These are user provided
@@ -575,11 +585,11 @@ static void lowerStatepointMetaArgs(SmallVectorImpl<SDValue> &Ops,
   for (Value *V : StatepointSite.gc_args()) {
     SDValue Incoming = Builder.getValue(V);
     if (FrameIndexSDNode *FI = dyn_cast<FrameIndexSDNode>(Incoming)) {
-      // This handles allocas as arguments to the statepoint
       Ops.push_back(Builder.DAG.getTargetFrameIndex(FI->getIndex(),
-                                                    Incoming.getValueType()));
+        Incoming.getValueType()));
     }
   }
+#endif
 
   // Record computed locations for all lowered values.
   // This can not be embedded in lowering loops as we need to record *all*
