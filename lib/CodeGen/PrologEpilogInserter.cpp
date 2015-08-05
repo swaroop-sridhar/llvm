@@ -237,7 +237,6 @@ bool PEI::runOnMachineFunction(MachineFunction &Fn) {
   }
 
   delete RS;
-  RestoreBlocks.clear();
   return true;
 }
 
@@ -770,12 +769,17 @@ void PEI::calculateFrameObjectOffsets(MachineFunction &Fn) {
 void PEI::insertPrologEpilogCode(MachineFunction &Fn) {
   const TargetFrameLowering &TFI = *Fn.getSubtarget().getFrameLowering();
 
-  // Add prologue to the function...
-  TFI.emitPrologue(Fn, *SaveBlock);
-
   // Add epilogue to restore the callee-save registers in each exiting block.
   for (MachineBasicBlock *RestoreBlock : RestoreBlocks)
     TFI.emitEpilogue(Fn, *RestoreBlock);
+
+  // RestoreBlocks are not used any further, and are invalid 
+  // once emitPrologue(), because this routine may split the 
+  // prolog/restore blocks.
+  RestoreBlocks.clear();
+
+  // Add prologue to the function...
+  TFI.emitPrologue(Fn, *SaveBlock);
 
   // Emit additional code that is required to support segmented stacks, if
   // we've been asked for it.  This, when linked with a runtime with support
