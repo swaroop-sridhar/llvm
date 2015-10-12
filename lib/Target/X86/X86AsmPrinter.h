@@ -125,6 +125,7 @@ class LLVM_LIBRARY_VISIBILITY X86AsmPrinter : public AsmPrinter {
     return AsmPrinter::doInitialization(M);
   }
 
+  void EmitFunctionBodyEnd() override;
   bool runOnMachineFunction(MachineFunction &F) override;
 };
 

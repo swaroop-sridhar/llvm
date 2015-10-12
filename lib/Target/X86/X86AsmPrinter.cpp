@@ -583,6 +583,12 @@ MCSymbol *X86AsmPrinter::GetCPISymbol(unsigned CPID) const {
   return AsmPrinter::GetCPISymbol(CPID);
 }
 
+// At the end of the function, compute Pinned and Untracked
+// GC pointers to be reported in the StackMap.
+void X86AsmPrinter::EmitFunctionBodyEnd() {
+  SM.recordFunctionInfo();
+}
+
 void X86AsmPrinter::EmitEndOfAsmFile(Module &M) {
   const Triple &TT = TM.getTargetTriple();
 

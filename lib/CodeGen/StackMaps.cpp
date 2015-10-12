@@ -331,14 +331,6 @@ void StackMaps::recordStackMapOpers(const MachineInstr &MI, uint64_t ID,
 
   CSInfos.emplace_back(CSOffsetExpr, ID, std::move(Locations),
                        std::move(LiveOuts));
-
-  // Record the stack size of the current function.
-  const MachineFrameInfo *MFI = AP.MF->getFrameInfo();
-  const TargetRegisterInfo *RegInfo = AP.MF->getSubtarget().getRegisterInfo();
-  bool HasDynamicFrameSize =
-      MFI->hasVarSizedObjects() || RegInfo->needsStackRealignment(*(AP.MF));
-  FnStackSize[AP.CurrentFnSym] =
-      HasDynamicFrameSize ? UINT64_MAX : MFI->getStackSize();
 }
 
 void StackMaps::recordStackMap(const MachineInstr &MI) {
@@ -379,6 +371,23 @@ void StackMaps::recordStatepoint(const MachineInstr &MI) {
   const unsigned StartIdx = opers.getVarIdx();
   recordStackMapOpers(MI, opers.getID(), MI.operands_begin() + StartIdx,
                       MI.operands_end(), false);
+}
+
+void StackMaps::recordFunctionInfo() {
+
+  if (CSInfos.size() == 0) {
+    // No need for a stackmap entry if there are no call-sites
+    // we are interested in.
+    return;
+  }
+
+  // Record the stack size of the current function.
+  const MachineFrameInfo *MFI = AP.MF->getFrameInfo();
+  const TargetRegisterInfo *RegInfo = AP.MF->getSubtarget().getRegisterInfo();
+  bool HasDynamicFrameSize =
+    MFI->hasVarSizedObjects() || RegInfo->needsStackRealignment(*(AP.MF));
+  FnStackSize[AP.CurrentFnSym] =
+    HasDynamicFrameSize ? UINT64_MAX : MFI->getStackSize();
 }
 
 /// Emit the stackmap header.

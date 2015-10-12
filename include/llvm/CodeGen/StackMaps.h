@@ -182,6 +182,9 @@ public:
   /// \brief Generate a stackmap record for a statepoint instruction.
   void recordStatepoint(const MachineInstr &MI);
 
+  /// \brief Record function-wide information in the Stack.
+  void recordFunctionInfo();
+
   /// If there is any stack map data, create a stack map section and serialize
   /// the map info into it. This clears the stack map data structures
   /// afterwards.
